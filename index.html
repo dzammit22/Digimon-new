@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Digimon Library + Evolution Simulator (v11 STABLE)</title>
+<style>
+  :root { --bg:#0b0f19; --card:#121826; --muted:#94a3b8; --text:#e5e7eb; --accent:#60a5fa; --border:#1f2937; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; line-height:1.45; }
+  header { position:sticky; top:0; z-index:10; background:#0f1627; border-bottom:1px solid var(--border); }
+  .container { max-width:1200px; margin:0 auto; padding:16px; }
+  h1 { margin:0; font-size:22px; }
+  .tabs { display:flex; gap:8px; margin-top:10px; }
+  .tabbtn { background:#121a2d; border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:10px; cursor:pointer; }
+  .tabbtn[aria-selected="true"] { border-color:#2a3a58; box-shadow:0 0 0 3px rgba(96,165,250,.15); }
+  .view { display:none; }
+  .view.active { display:block; }
+  /* Library */
+  .controls { display:grid; gap:10px; grid-template-columns:1fr repeat(4, minmax(0, 180px)); align-items:center; }
+  input, select { background:#0f1524; color:var(--text); border:1px solid var(--border); border-radius:10px; padding:10px 12px; outline:none; }
+  input:focus, select:focus, button:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(96,165,250,.2); }
+  .grid { display:grid; gap:14px; padding:16px; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); }
+  .card { background:#121826; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .thumb { height:140px; display:grid; place-items:center; background:#0c1220; border-bottom:1px solid var(--border); }
+  .thumb img { max-height:120px; max-width:160px; image-rendering:pixelated; }
+  .placeholder { width:120px; height:120px; border-radius:12px; background:#0a1020; border:1px dashed #23314d; color:#94a3b8; display:grid; place-items:center; font-weight:700; font-size:18px; }
+  .content { padding:12px; }
+  .name { font-weight:700; margin-bottom:6px; font-size:16px; }
+  .pill { display:inline-block; font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--border); margin-right:6px; color:#94a3b8; }
+  .kv { display:grid; grid-template-columns:70px 1fr; gap:6px; margin-top:8px; font-size:13px; color:#94a3b8;}
+  .toolbar { display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
+  button { background:#162038; color:#fff; border:1px solid var(--border); border-radius:10px; padding:8px 10px; cursor:pointer; }
+  button:hover { border-color:#2b3a58; }
+  .badge { font-size:12px; color:#94a3b8; }
+  .meta { color:#94a3b8; font-size:14px; margin-top:8px; }
+  /* Sim */
+  .sim-wrap { display:grid; grid-template-columns: 360px 1fr; gap:16px; padding:16px; }
+  .panel { background:#101728; border:1px solid var(--border); border-radius:16px; padding:12px; }
+  .title-sm { font-weight:700; margin-bottom:8px; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  .row3 { display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; }
+  .progress { height:14px; background:#0e1424; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .bar { height:100%; background:linear-gradient(90deg,#5b9cff,#6ad7f7); width:0%; }
+  .history { display:flex; flex-wrap:wrap; gap:10px; }
+  .chip { border:1px solid var(--border); border-radius:999px; padding:6px 10px; background:#0f1627; }
+  .flex { display:flex; gap:8px; align-items:center; }
+  .current { display:flex; gap:16px; align-items:center; }
+  .current .thumb { width:160px; height:160px; }
+  .status { margin-top:10px; color:#a6e3a1; }
+  .status.err { color:#f87171; }
+  .exp7 { display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; }
+  .expbox { background:#0e1527; border:1px solid var(--border); border-radius:10px; padding:8px; text-align:center; }
+  .expbox .val { font-weight:700; margin:6px 0; }
+  .expbox .btns { display:flex; gap:4px; justify-content:center; flex-wrap:wrap; }
+  .muted { color:#94a3b8; font-size:12px; }
+  .toggle { font-size:12px; background:#0e1527; }
+  .reqs { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:12px; background:#0c1220; border:1px solid var(--border); border-radius:10px; padding:8px; margin-top:8px; display:none; }
+  .reqs.show { display:block; }
+
+  /* 300% sprite zoom without changing frame size */
+  .thumb { overflow: hidden; }
+  .thumb img { transform: scale(3); transform-origin: center center; }
+  .current .thumb img { transform: scale(3); transform-origin: center center; }
+
+</style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Digimon Library + Evolution Simulator (v11 STABLE)</h1>
+      <div class="tabs" role="tablist">
+        <button class="tabbtn" role="tab" id="tab-lib" aria-controls="view-lib" aria-selected="true">Library</button>
+        <button class="tabbtn" role="tab" id="tab-sim" aria-controls="view-sim" aria-selected="false">Evolution Simulator</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="view-lib" class="view active" role="tabpanel" aria-labelledby="tab-lib">
+      <div class="controls">
+        <input id="q" type="search" placeholder="Search name or ID…" />
+        <select id="stage"><option value="">All Stages</option></select>
+        <select id="attr"><option value="">All Attributes</option></select>
+        <select id="version"><option value="">All Versions</option></select>
+        <select id="sort">
+          <option value="name">Sort: Name (A–Z)</option>
+          <option value="power_desc">Sort: Power (High→Low)</option>
+          <option value="power_asc">Sort: Power (Low→High)</option>
+          <option value="album_asc">Sort: Album #</option>
+          <option value="id">Sort: ID</option>
+        </select>
+      </div>
+      <div class="toolbar">
+        <span id="matchCount" class="badge"></span>
+        <button id="showMissing">Show missing images</button>
+        <button id="reset">Reset</button>
+      </div>
+      <div class="meta" id="meta"></div>
+      <section id="grid" class="grid" aria-live="polite"></section>
+    </section>
+
+    <section id="view-sim" class="view" role="tabpanel" aria-labelledby="tab-sim">
+      <div class="sim-wrap">
+        <aside class="panel">
+          <div class="title-sm">Setup</div>
+          <div class="row">
+            <label>Evolution line
+              <select id="lineSel"></select>
+            </label>
+            <label>Starting stage
+              <select id="startStage">
+                <option>I</option><option>II</option><option>III</option><option>IV</option>
+              </select>
+            </label>
+          </div>
+          <label style="display:block; margin-top:8px;">Starting Digimon
+            <select id="startDigi"></select>
+          </label>
+          <div class="row" style="margin-top:8px;">
+            <button id="startBtn">Start</button>
+            <button id="pickFromLib">Use current Library selection</button>
+          </div>
+
+          <div class="title-sm" style="margin-top:12px;">Base XP Thresholds</div>
+          <div class="row3">
+            <label>I→II <input id="t12" type="number" min="1" value="100"></label>
+            <label>II→III <input id="t23" type="number" min="1" value="250"></label>
+            <label>III→IV(+1 each) <input id="t34" type="number" min="1" value="500"></label>
+          </div>
+          <div class="row3" style="margin-top:6px;">
+            <button id="xp10">+10 XP</button>
+            <button id="xp50">+50 XP</button>
+            <button id="xp100">+100 XP</button>
+          </div>
+
+          <div class="title-sm" style="margin-top:12px;">Special EXP (hidden combos)</div>
+          <div class="muted">Seven types (A–G). Evolution happens when a candidate's secret combo is met.</div>
+          <div class="exp7" id="exp7"></div>
+          <div class="row3" style="margin-top:8px;">
+            <button id="resetSpec">Reset special EXP</button>
+            <button id="randSpec">Random +10 to A–G</button>
+            <button id="toggleReveal" class="toggle">👁 Reveal requirements (debug)</button>
+          </div>
+          <div id="reqDump" class="reqs"></div>
+
+          <div class="row3" style="margin-top:8px;">
+            <button id="resetXp">Reset XP</button>
+            <button id="restart">Restart</button>
+            <button id="randomize">Random starter</button>
+          </div>
+
+          <div id="simStatus" class="status" style="margin-top:10px;"></div>
+        </aside>
+
+        <section class="panel">
+          <div class="title-sm">Current</div>
+          <div class="current" id="currentBox"></div>
+
+          <div class="title-sm" style="margin-top:12px;">Base Experience</div>
+          <div class="flex">
+            <div class="progress" style="flex:1;">
+              <div id="xpbar" class="bar" style="width:0%;"></div>
+            </div>
+            <div id="xptext" class="badge">0 / 100</div>
+          </div>
+
+          <div class="title-sm" style="margin-top:12px;">History</div>
+          <div id="history" class="history"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer style="text-align:center;color:#94a3b8;padding:24px;">
+    v11 STABLE — based on diagnostic wiring; Special EXP A–G + strict step-by-step evolution.
+  </footer>
+
+<script>
+// Tabs
+const tabLib = document.getElementById('tab-lib');
+const tabSim = document.getElementById('tab-sim');
+const viewLib = document.getElementById('view-lib');
+const viewSim = document.getElementById('view-sim');
+function selTab(which){ const lib = which==='lib'; tabLib.setAttribute('aria-selected', lib?'true':'false'); tabSim.setAttribute('aria-selected', lib?'false':'true'); viewLib.classList.toggle('active', lib); viewSim.classList.toggle('active', !lib); }
+tabLib.addEventListener('click', ()=>selTab('lib')); tabSim.addEventListener('click', ()=>selTab('sim'));
+selTab('lib');
+
+// Data & assets
+const DATA = [{"ID": "1-00", "Name": "Bubbmon", "Stage": "I", "Attribute": "Free", "Album": "1", "Power": NaN, "Version": "NSpC", "Assumed_File": "bubb.gif", "Has_Image": true}, {"ID": "1-01", "Name": "Mochimon", "Stage": "II", "Attribute": "Free", "Album": "2", "Power": NaN, "Version": "NSpC", "Assumed_File": "mochi.gif", "Has_Image": true}, {"ID": "1-02", "Name": "Tentomon", "Stage": "III", "Attribute": "Vaccine", "Album": "3", "Power": 20.0, "Version": "NSpC", "Assumed_File": "tento.gif", "Has_Image": true}, {"ID": "1-03", "Name": "Gottsumon", "Stage": "III", "Attribute": "Data", "Album": "4", "Power": 15.0, "Version": "NSpC", "Assumed_File": "gottsu.gif", "Has_Image": true}, {"ID": "1-04", "Name": "Otamamon", "Stage": "III", "Attribute": "Virus", "Album": "5", "Power": 10.0, "Version": "NSpC", "Assumed_File": "otama.gif", "Has_Image": true}, {"ID": "1-05", "Name": "Kabuterimon", "Stage": "IV", "Attribute": "Vaccine", "Album": "7", "Power": 50.0, "Version": "NSpC", "Assumed_File": "kabuteri.gif", "Has_Image": true}, {"ID": "1-06", "Name": "Tortamon", "Stage": "IV", "Attribute": "Vaccine", "Album": "8", "Power": 40.0, "Version": "NSpC", "Assumed_File": "torta.gif", "Has_Image": true}, {"ID": "1-07", "Name": "Monochromon", "Stage": "IV", "Attribute": "Data", "Album": "9", "Power": 44.0, "Version": "NSpC", "Assumed_File": "monochro.gif", "Has_Image": true}, {"ID": "1-08", "Name": "Starmon", "Stage": "IV", "Attribute": "Data", "Album": "10", "Power": 32.0, "Version": "NSpC", "Assumed_File": "star.gif", "Has_Image": true}, {"ID": "1-09", "Name": "Gekomon", "Stage": "IV", "Attribute": "Virus", "Album": "11", "Power": 36.0, "Version": "NSpC", "Assumed_File": "geko.gif", "Has_Image": true}, {"ID": "1-10", "Name": "Kuwagamon", "Stage": "IV", "Attribute": "Virus", "Album": "12", "Power": 48.0, "Version": "NSpC", "Assumed_File": "kuwaga.gif", "Has_Image": true}, {"ID": "1-11", "Name": "Tailmon", "Stage": "IV", "Attribute": "Vaccine", "Album": "13", "Power": 55.0, "Version": "NSpC", "Assumed_File": "tail.gif", "Has_Image": true}, {"ID": "1-12", "Name": "Atlur Kabuterimon", "Stage": "V", "Attribute": "Vaccine", "Album": "15", "Power": 96.0, "Version": "NSpC", "Assumed_File": "atlurkabuteri.gif", "Has_Image": true}, {"ID": "1-13", "Name": "Jyagamon", "Stage": "V", "Attribute": "Vaccine", "Album": "16", "Power": 80.0, "Version": "NSpC", "Assumed_File": "jyaga.gif", "Has_Image": true}, {"ID": "1-14", "Name": "Triceramon", "Stage": "V", "Attribute": "Data", "Album": "17", "Power": 100.0, "Version": "NSpC", "Assumed_File": "tricera.gif", "Has_Image": true}, {"ID": "1-15", "Name": "Piccolomon", "Stage": "V", "Attribute": "Data", "Album": "18", "Power": 88.0, "Version": "NSpC", "Assumed_File": "piccolo.gif", "Has_Image": true}, {"ID": "1-16", "Name": "Tonosama Gekomon", "Stage": "V", "Attribute": "Virus", "Album": "19", "Power": 84.0, "Version": "NSpC", "Assumed_File": "tonosamageko.gif", "Has_Image": true}, {"ID": "1-17", "Name": "Okuwamon", "Stage": "V", "Attribute": "Virus", "Album": "20", "Power": 92.0, "Version": "NSpC", "Assumed_File": "okuwa.gif", "Has_Image": true}, {"ID": "1-18", "Name": "Angewomon", "Stage": "V", "Attribute": "Vaccine", "Album": "21", "Power": 105.0, "Version": "NSpC", "Assumed_File": "angewo.gif", "Has_Image": true}, {"ID": "1-19", "Name": "Herakle Kabuterimon", "Stage": "VI", "Attribute": "Vaccine", "Album": "23", "Power": 165.0, "Version": "NSpC", "Assumed_File": "heraklekabuteri.gif", "Has_Image": true}, {"ID": "1-20", "Name": "Saber Leomon", "Stage": "VI", "Attribute": "Data", "Album": "24", "Power": 170.0, "Version": "NSpC", "Assumed_File": "saberleo.gif", "Has_Image": true}, {"ID": "1-21", "Name": "Metal Etemon", "Stage": "VI", "Attribute": "Virus", "Album": "25", "Power": 140.0, "Version": "NSpC", "Assumed_File": "metalete.gif", "Has_Image": true}, {"ID": "1-22", "Name": "Holydramon", "Stage": "VI", "Attribute": "Vaccine", "Album": "26", "Power": 155.0, "Version": "NSpC", "Assumed_File": "holydra.gif", "Has_Image": true}, {"ID": "1-23", "Name": "Blastmon", "Stage": "VI", "Attribute": "Vaccine", "Album": "27", "Power": 145.0, "Version": "NSpC", "Assumed_File": "blast.gif", "Has_Image": true}, {"ID": "1-24", "Name": "El Doradimon", "Stage": "VI", "Attribute": "Data", "Album": "28", "Power": 150.0, "Version": "NSpC", "Assumed_File": "eldoradi.gif", "Has_Image": true}, {"ID": "1-25", "Name": "Gran Kuwagamon", "Stage": "VI", "Attribute": "Free", "Album": "29", "Power": 160.0, "Version": "NSpC", "Assumed_File": "grankuwaga.gif", "Has_Image": true}, {"ID": "1-26", "Name": "Tlalocmon", "Stage": "VI+", "Attribute": "Data", "Album": "31", "Power": 205.0, "Version": "NSpC", "Assumed_File": "tlaloc.gif", "Has_Image": true}, {"ID": "1-27", "Name": "Mastemon", "Stage": "VI+", "Attribute": "Vaccine", "Album": "32", "Power": 195.0, "Version": "NSpC", "Assumed_File": "maste.gif", "Has_Image": true}, {"ID": "1-28", "Name": "Angoramon", "Stage": "III", "Attribute": "Vaccine", "Album": "6", "Power": 25.0, "Version": "NSpC", "Assumed_File": "angora.gif", "Has_Image": true}, {"ID": "1-29", "Name": "Symbare Angoramon", "Stage": "IV", "Attribute": "Vaccine", "Album": "14", "Power": 60.0, "Version": "NSpC", "Assumed_File": "symbareangora.gif", "Has_Image": true}, {"ID": "1-30", "Name": "Lamortmon", "Stage": "V", "Attribute": "Vaccine", "Album": "22", "Power": 110.0, "Version": "NSpC", "Assumed_File": "lamort.gif", "Has_Image": true}, {"ID": "1-31", "Name": "Diarbbitmon", "Stage": "VI", "Attribute": "Vaccine", "Album": "30", "Power": 180.0, "Version": "NSpC", "Assumed_File": "diarbbit.gif", "Has_Image": true}, {"ID": "2-00", "Name": "Pitchmon", "Stage": "I", "Attribute": "Free", "Album": "1", "Power": NaN, "Version": "DSaC", "Assumed_File": "pitch.gif", "Has_Image": true}, {"ID": "2-01", "Name": "Pukamon", "Stage": "II", "Attribute": "Free", "Album": "2", "Power": NaN, "Version": "DSaC", "Assumed_File": "puka.gif", "Has_Image": true}, {"ID": "2-02", "Name": "Gomamon", "Stage": "III", "Attribute": "Vaccine", "Album": "3", "Power": 10.0, "Version": "DSaC", "Assumed_File": "goma.gif", "Has_Image": true}, {"ID": "2-03", "Name": "Ganimon", "Stage": "III", "Attribute": "Data", "Album": "4", "Power": 20.0, "Version": "DSaC", "Assumed_File": "gani.gif", "Has_Image": true}, {"ID": "2-04", "Name": "Shakomon", "Stage": "III", "Attribute": "Virus", "Album": "5", "Power": 15.0, "Version": "DSaC", "Assumed_File": "shako.gif", "Has_Image": true}, {"ID": "2-05", "Name": "Rukamon", "Stage": "IV", "Attribute": "Vaccine", "Album": "7", "Power": 48.0, "Version": "DSaC", "Assumed_File": "ruka.gif", "Has_Image": true}, {"ID": "2-06", "Name": "Ikkakumon", "Stage": "IV", "Attribute": "Vaccine", "Album": "8", "Power": 36.0, "Version": "DSaC", "Assumed_File": "ikkaku.gif", "Has_Image": true}, {"ID": "2-07", "Name": "Seadramon", "Stage": "IV", "Attribute": "Data", "Album": "9", "Power": 50.0, "Version": "DSaC", "Assumed_File": "seadra.gif", "Has_Image": true}, {"ID": "2-08", "Name": "Coelamon", "Stage": "IV", "Attribute": "Data", "Album": "10", "Power": 40.0, "Version": "DSaC", "Assumed_File": "coela.gif", "Has_Image": true}, {"ID": "2-09", "Name": "Octmon", "Stage": "IV", "Attribute": "Virus", "Album": "11", "Power": 44.0, "Version": "DSaC", "Assumed_File": "oct.gif", "Has_Image": true}, {"ID": "2-10", "Name": "Gesomon", "Stage": "IV", "Attribute": "Virus", "Album": "12", "Power": 32.0, "Version": "DSaC", "Assumed_File": "geso.gif", "Has_Image": true}, {"ID": "2-11", "Name": "Ebidramon", "Stage": "IV", "Attribute": "Data", "Album": "13", "Power": 55.0, "Version": "DSaC", "Assumed_File": "ebidra.gif", "Has_Image": true}, {"ID": "2-12", "Name": "Whamon", "Stage": "V", "Attribute": "Vaccine", "Album": "15", "Power": 100.0, "Version": "DSaC", "Assumed_File": "wha.gif", "Has_Image": true}, {"ID": "2-13", "Name": "Zudomon", "Stage": "V", "Attribute": "Vaccine", "Album": "16", "Power": 88.0, "Version": "DSaC", "Assumed_File": "zudo.gif", "Has_Image": true}, {"ID": "2-14", "Name": "Mega Seadramon", "Stage": "V", "Attribute": "Data", "Album": "17", "Power": 92.0, "Version": "DSaC", "Assumed_File": "megaseadra.gif", "Has_Image": true}, {"ID": "2-15", "Name": "Anomalocarimon", "Stage": "V", "Attribute": "Data", "Album": "18", "Power": 105.0, "Version": "DSaC", "Assumed_File": "anomalocari.gif", "Has_Image": true}, {"ID": "2-16", "Name": "Dagomon", "Stage": "V", "Attribute": "Virus", "Album": "19", "Power": 96.0, "Version": "DSaC", "Assumed_File": "dago.gif", "Has_Image": true}, {"ID": "2-17", "Name": "Marin Devimon", "Stage": "V", "Attribute": "Virus", "Album": "20", "Power": 84.0, "Version": "DSaC", "Assumed_File": "marindevi.gif", "Has_Image": true}, {"ID": "2-18", "Name": "Hangyomon", "Stage": "V", "Attribute": "Data", "Album": "21", "Power": 80.0, "Version": "DSaC", "Assumed_File": "hangyo.gif", "Has_Image": true}, {"ID": "2-19", "Name": "Marin Angemon", "Stage": "VI", "Attribute": "Vaccine", "Album": "23", "Power": 160.0, "Version": "DSaC", "Assumed_File": "marinange.gif", "Has_Image": true}, {"ID": "2-20", "Name": "Metal Seadramon", "Stage": "VI", "Attribute": "Data", "Album": "24", "Power": 165.0, "Version": "DSaC", "Assumed_File": "metalseadra.gif", "Has_Image": true}, {"ID": "2-21", "Name": "Pukumon", "Stage": "VI", "Attribute": "Virus", "Album": "25", "Power": 145.0, "Version": "DSaC", "Assumed_File": "puku.gif", "Has_Image": true}, {"ID": "2-22", "Name": "Plesiomon", "Stage": "VI", "Attribute": "Data", "Album": "26", "Power": 155.0, "Version": "DSaC", "Assumed_File": "plesio.gif", "Has_Image": true}, {"ID": "2-23", "Name": "Vikemon", "Stage": "VI", "Attribute": "Free", "Album": "27", "Power": 150.0, "Version": "DSaC", "Assumed_File": "vike.gif", "Has_Image": true}, {"ID": "2-24", "Name": "Jumbo Gamemon", "Stage": "VI", "Attribute": "Data", "Album": "28", "Power": 140.0, "Version": "DSaC", "Assumed_File": "jumbogame.gif", "Has_Image": true}, {"ID": "2-25", "Name": "Cthyllamon", "Stage": "VI", "Attribute": "Virus", "Album": "29", "Power": 170.0, "Version": "DSaC", "Assumed_File": "cthylla.gif", "Has_Image": true}, {"ID": "2-26", "Name": "Mitamamon", "Stage": "VI+", "Attribute": "Vaccine", "Album": "31", "Power": 205.0, "Version": "DSaC", "Assumed_File": "mitama.gif", "Has_Image": true}, {"ID": "2-27", "Name": "Aegisdramon", "Stage": "VI+", "Attribute": "Vaccine", "Album": "32", "Power": 195.0, "Version": "DSaC", "Assumed_File": "aegisdra.gif", "Has_Image": true}, {"ID": "2-28", "Name": "Jellymon", "Stage": "III", "Attribute": "Data", "Album": "6", "Power": 25.0, "Version": "DSaC", "Assumed_File": "jelly.gif", "Has_Image": true}, {"ID": "2-29", "Name": "Tesla Jellymon", "Stage": "IV", "Attribute": "Data", "Album": "14", "Power": 60.0, "Version": "DSaC", "Assumed_File": "teslajelly.gif", "Has_Image": true}, {"ID": "2-30", "Name": "Thetismon", "Stage": "V", "Attribute": "Data", "Album": "22", "Power": 110.0, "Version": "DSaC", "Assumed_File": "thetis.gif", "Has_Image": true}, {"ID": "2-31", "Name": "Amphimon", "Stage": "VI", "Attribute": "Data", "Album": "30", "Power": 180.0, "Version": "DSaC", "Assumed_File": "amphi.gif", "Has_Image": true}, {"ID": "3-00", "Name": "Mokumon", "Stage": "I", "Attribute": "Free", "Album": "1", "Power": NaN, "Version": "NSoC", "Assumed_File": "moku.gif", "Has_Image": true}, {"ID": "3-01", "Name": "Peti Meramon", "Stage": "II", "Attribute": "Free", "Album": "2", "Power": NaN, "Version": "NSoC", "Assumed_File": "petimera.gif", "Has_Image": true}, {"ID": "3-02", "Name": "Bakumon", "Stage": "III", "Attribute": "Vaccine", "Album": "3", "Power": 10.0, "Version": "NSoC", "Assumed_File": "baku.gif", "Has_Image": true}, {"ID": "3-03", "Name": "Candmon", "Stage": "III", "Attribute": "Data", "Album": "4", "Power": 15.0, "Version": "NSoC", "Assumed_File": "cand.gif", "Has_Image": true}, {"ID": "3-04", "Name": "Pico Devimon", "Stage": "III", "Attribute": "Virus", "Album": "5", "Power": 20.0, "Version": "NSoC", "Assumed_File": "picodevi.gif", "Has_Image": true}, {"ID": "3-05", "Name": "Hanumon", "Stage": "IV", "Attribute": "Vaccine", "Album": "7", "Power": 44.0, "Version": "NSoC", "Assumed_File": "hanu.gif", "Has_Image": true}, {"ID": "3-06", "Name": "Garurumon", "Stage": "IV", "Attribute": "Vaccine", "Album": "8", "Power": 32.0, "Version": "NSoC", "Assumed_File": "garuru.gif", "Has_Image": true}, {"ID": "3-07", "Name": "Meramon", "Stage": "IV", "Attribute": "Data", "Album": "9", "Power": 36.0, "Version": "NSoC", "Assumed_File": "mera.gif", "Has_Image": true}, {"ID": "3-08", "Name": "Wizarmon", "Stage": "IV", "Attribute": "Data", "Album": "10", "Power": 48.0, "Version": "NSoC", "Assumed_File": "wizar.gif", "Has_Image": true}, {"ID": "3-09", "Name": "Devimon", "Stage": "IV", "Attribute": "Virus", "Album": "11", "Power": 50.0, "Version": "NSoC", "Assumed_File": "devi.gif", "Has_Image": true}, {"ID": "3-10", "Name": "Bakemon", "Stage": "IV", "Attribute": "Virus", "Album": "12", "Power": 40.0, "Version": "NSoC", "Assumed_File": "bake.gif", "Has_Image": true}, {"ID": "3-11", "Name": "Dokugumon", "Stage": "IV", "Attribute": "Virus", "Album": "13", "Power": 55.0, "Version": "NSoC", "Assumed_File": "dokugu.gif", "Has_Image": true}, {"ID": "3-12", "Name": "Mammon", "Stage": "V", "Attribute": "Vaccine", "Album": "15", "Power": 84.0, "Version": "NSoC", "Assumed_File": "mam.gif", "Has_Image": true}, {"ID": "3-13", "Name": "Were Garurumon", "Stage": "V", "Attribute": "Vaccine", "Album": "16", "Power": 96.0, "Version": "NSoC", "Assumed_File": "weregaruru.gif", "Has_Image": true}, {"ID": "3-14", "Name": "Death Meramon", "Stage": "V", "Attribute": "Data", "Album": "17", "Power": 88.0, "Version": "NSoC", "Assumed_File": "deathmera.gif", "Has_Image": true}, {"ID": "3-15", "Name": "Pumpmon", "Stage": "V", "Attribute": "Data", "Album": "18", "Power": 100.0, "Version": "NSoC", "Assumed_File": "pump.gif", "Has_Image": true}, {"ID": "3-16", "Name": "Vamdemon", "Stage": "V", "Attribute": "Virus", "Album": "19", "Power": 92.0, "Version": "NSoC", "Assumed_File": "vamde.gif", "Has_Image": true}, {"ID": "3-17", "Name": "Fantomon", "Stage": "V", "Attribute": "Virus", "Album": "20", "Power": 80.0, "Version": "NSoC", "Assumed_File": "fanto.gif", "Has_Image": true}, {"ID": "3-18", "Name": "Lady Devimon", "Stage": "V", "Attribute": "Virus", "Album": "21", "Power": 105.0, "Version": "NSoC", "Assumed_File": "ladydevi.gif", "Has_Image": true}, {"ID": "3-19", "Name": "Skull Mammon", "Stage": "VI", "Attribute": "Vaccine", "Album": "23", "Power": 150.0, "Version": "NSoC", "Assumed_File": "skullmam.gif", "Has_Image": true}, {"ID": "3-20", "Name": "Boltmon", "Stage": "VI", "Attribute": "Data", "Album": "24", "Power": 145.0, "Version": "NSoC", "Assumed_File": "bolt.gif", "Has_Image": true}, {"ID": "3-21", "Name": "Demon", "Stage": "VI", "Attribute": "Virus", "Album": "25", "Power": 160.0, "Version": "NSoC", "Assumed_File": "de.gif", "Has_Image": true}, {"ID": "3-22", "Name": "Piemon", "Stage": "VI", "Attribute": "Virus", "Album": "26", "Power": 155.0, "Version": "NSoC", "Assumed_File": "pie.gif", "Has_Image": true}, {"ID": "3-23", "Name": "Anubimon", "Stage": "VI", "Attribute": "Vaccine", "Album": "27", "Power": 140.0, "Version": "NSoC", "Assumed_File": "anubi.gif", "Has_Image": true}, {"ID": "3-24", "Name": "Noble Pumpmon", "Stage": "VI", "Attribute": "Data", "Album": "28", "Power": 165.0, "Version": "NSoC", "Assumed_File": "noblepump.gif", "Has_Image": true}, {"ID": "3-25", "Name": "Callismon", "Stage": "VI", "Attribute": "Virus", "Album": "29", "Power": 170.0, "Version": "NSoC", "Assumed_File": "callis.gif", "Has_Image": true}, {"ID": "3-26", "Name": "Voltobautamon", "Stage": "VI+", "Attribute": "Virus", "Album": "31", "Power": 205.0, "Version": "NSoC", "Assumed_File": "voltobauta.gif", "Has_Image": true}, {"ID": "3-27", "Name": "Mastemon", "Stage": "VI+", "Attribute": "Vaccine", "Album": "32", "Power": 195.0, "Version": "NSoC", "Assumed_File": "maste.gif", "Has_Image": true}, {"ID": "3-28", "Name": "Loogamon", "Stage": "III", "Attribute": "Virus", "Album": "6", "Power": 25.0, "Version": "NSoC", "Assumed_File": "looga.gif", "Has_Image": true}, {"ID": "3-29", "Name": "Loogarmon", "Stage": "IV", "Attribute": "Virus", "Album": "14", "Power": 60.0, "Version": "NSoC", "Assumed_File": "loogar.gif", "Has_Image": true}, {"ID": "3-30", "Name": "Soloogarmon", "Stage": "V", "Attribute": "Virus", "Album": "22", "Power": 110.0, "Version": "NSoC", "Assumed_File": "soloogar.gif", "Has_Image": true}, {"ID": "3-31", "Name": "Fenriloogamon", "Stage": "VI", "Attribute": "Virus", "Album": "30", "Power": 180.0, "Version": "NSoC", "Assumed_File": "fenrilooga.gif", "Has_Image": true}, {"ID": "4-00", "Name": "Nyokimon", "Stage": "I", "Attribute": "Free", "Album": "1", "Power": NaN, "Version": "WGuC", "Assumed_File": "nyoki.gif", "Has_Image": true}, {"ID": "4-01", "Name": "Pyocomon", "Stage": "II", "Attribute": "Free", "Album": "2", "Power": NaN, "Version": "WGuC", "Assumed_File": "pyoco.gif", "Has_Image": true}, {"ID": "4-02", "Name": "Piyomon", "Stage": "III", "Attribute": "Vaccine", "Album": "3", "Power": 18.0, "Version": "WGuC", "Assumed_File": "piyo.gif", "Has_Image": true}, {"ID": "4-03", "Name": "Floramon", "Stage": "III", "Attribute": "Data", "Album": "4", "Power": 10.0, "Version": "WGuC", "Assumed_File": "flora.gif", "Has_Image": true}, {"ID": "4-04", "Name": "Mushmon", "Stage": "III", "Attribute": "Virus", "Album": "5", "Power": 14.0, "Version": "WGuC", "Assumed_File": "mush.gif", "Has_Image": true}, {"ID": "4-05", "Name": "Palmon", "Stage": "III", "Attribute": "Data", "Album": "6", "Power": 22.0, "Version": "WGuC", "Assumed_File": "pal.gif", "Has_Image": true}, {"ID": "4-06", "Name": "V-dramon", "Stage": "IV", "Attribute": "Vaccine", "Album": "8", "Power": 48.0, "Version": "WGuC", "Assumed_File": "vdra.gif", "Has_Image": true}, {"ID": "4-07", "Name": "Birdramon", "Stage": "IV", "Attribute": "Vaccine", "Album": "9", "Power": 36.0, "Version": "WGuC", "Assumed_File": "birdra.gif", "Has_Image": true}, {"ID": "4-08", "Name": "Togemon", "Stage": "IV", "Attribute": "Data", "Album": "10", "Power": 55.0, "Version": "WGuC", "Assumed_File": "toge.gif", "Has_Image": true}, {"ID": "4-09", "Name": "Kiwimon", "Stage": "IV", "Attribute": "Data", "Album": "11", "Power": 40.0, "Version": "WGuC", "Assumed_File": "kiwi.gif", "Has_Image": true}, {"ID": "4-10", "Name": "Woodmon", "Stage": "IV", "Attribute": "Virus", "Album": "12", "Power": 44.0, "Version": "WGuC", "Assumed_File": "wood.gif", "Has_Image": true}, {"ID": "4-11", "Name": "Red Vegimon", "Stage": "IV", "Attribute": "Virus", "Album": "13", "Power": 32.0, "Version": "WGuC", "Assumed_File": "redvegi.gif", "Has_Image": true}, {"ID": "4-12", "Name": "Aero V-dramon", "Stage": "V", "Attribute": "Vaccine", "Album": "15", "Power": 105.0, "Version": "WGuC", "Assumed_File": "aerovdra.gif", "Has_Image": true}, {"ID": "4-13", "Name": "Garudamon", "Stage": "V", "Attribute": "Vaccine", "Album": "16", "Power": 88.0, "Version": "WGuC", "Assumed_File": "garuda.gif", "Has_Image": true}, {"ID": "4-14", "Name": "Blossomon", "Stage": "V", "Attribute": "Data", "Album": "17", "Power": 92.0, "Version": "WGuC", "Assumed_File": "blosso.gif", "Has_Image": true}, {"ID": "4-15", "Name": "Delumon", "Stage": "V", "Attribute": "Data", "Album": "18", "Power": 84.0, "Version": "WGuC", "Assumed_File": "delu.gif", "Has_Image": true}, {"ID": "4-16", "Name": "Jyureimon", "Stage": "V", "Attribute": "Virus", "Album": "19", "Power": 96.0, "Version": "WGuC", "Assumed_File": "jyurei.gif", "Has_Image": true}, {"ID": "4-17", "Name": "Gerbemon", "Stage": "V", "Attribute": "Virus", "Album": "20", "Power": 80.0, "Version": "WGuC", "Assumed_File": "gerbe.gif", "Has_Image": true}, {"ID": "4-18", "Name": "Lilimon", "Stage": "V", "Attribute": "Data", "Album": "21", "Power": 100.0, "Version": "WGuC", "Assumed_File": "lili.gif", "Has_Image": true}, {"ID": "4-19", "Name": "Hououmon", "Stage": "VI", "Attribute": "Vaccine", "Album": "23", "Power": 150.0, "Version": "WGuC", "Assumed_File": "houou.gif", "Has_Image": true}, {"ID": "4-20", "Name": "Griffomon", "Stage": "VI", "Attribute": "Data", "Album": "24", "Power": 140.0, "Version": "WGuC", "Assumed_File": "griffo.gif", "Has_Image": true}, {"ID": "4-21", "Name": "Pinochimon", "Stage": "VI", "Attribute": "Virus", "Album": "25", "Power": 145.0, "Version": "WGuC", "Assumed_File": "pinochi.gif", "Has_Image": true}, {"ID": "4-22", "Name": "Rosemon", "Stage": "VI", "Attribute": "Data", "Album": "26", "Power": 155.0, "Version": "WGuC", "Assumed_File": "rose.gif", "Has_Image": true}, {"ID": "4-23", "Name": "Ulforce V-dramon", "Stage": "VI", "Attribute": "Vaccine", "Album": "27", "Power": 170.0, "Version": "WGuC", "Assumed_File": "ulforcevdra.gif", "Has_Image": true}, {"ID": "4-24", "Name": "Rafflesimon", "Stage": "VI", "Attribute": "Data", "Album": "28", "Power": 165.0, "Version": "WGuC", "Assumed_File": "rafflesi.gif", "Has_Image": true}, {"ID": "4-25", "Name": "Hydramon", "Stage": "VI", "Attribute": "Virus", "Album": "29", "Power": 160.0, "Version": "WGuC", "Assumed_File": "hydra.gif", "Has_Image": true}, {"ID": "4-26", "Name": "Mitamamon", "Stage": "VI+", "Attribute": "Vaccine", "Album": "31", "Power": 205.0, "Version": "WGuC", "Assumed_File": "mitama.gif", "Has_Image": true}, {"ID": "4-27", "Name": "Cernumon", "Stage": "VI+", "Attribute": "Data", "Album": "32", "Power": 205.0, "Version": "WGuC", "Assumed_File": "cernu.gif", "Has_Image": true}, {"ID": "4-28", "Name": "Pteromon", "Stage": "III", "Attribute": "Data", "Album": "7", "Power": 25.0, "Version": "WGuC", "Assumed_File": "ptero.gif", "Has_Image": true}, {"ID": "4-29", "Name": "Galemon", "Stage": "IV", "Attribute": "Data", "Album": "14", "Power": 60.0, "Version": "WGuC", "Assumed_File": "gale.gif", "Has_Image": true}, {"ID": "4-30", "Name": "Grand Galemon", "Stage": "V", "Attribute": "Data", "Album": "22", "Power": 110.0, "Version": "WGuC", "Assumed_File": "grandgale.gif", "Has_Image": true}, {"ID": "4-31", "Name": "Zephagamon", "Stage": "VI", "Attribute": "Data", "Album": "30", "Power": 180.0, "Version": "WGuC", "Assumed_File": "zephaga.gif", "Has_Image": true}, {"ID": "5-00", "Name": "Choromon", "Stage": "I", "Attribute": "Free", "Album": "1", "Power": NaN, "Version": "MEmC", "Assumed_File": "choro.gif", "Has_Image": true}, {"ID": "5-01", "Name": "Caprimon", "Stage": "II", "Attribute": "Free", "Album": "2", "Power": NaN, "Version": "MEmC", "Assumed_File": "capri.gif", "Has_Image": true}, {"ID": "5-02", "Name": "Toy Agumon", "Stage": "III", "Attribute": "Vaccine", "Album": "3", "Power": 10.0, "Version": "MEmC", "Assumed_File": "toyagu.gif", "Has_Image": true}, {"ID": "5-03", "Name": "Kokuwamon", "Stage": "III", "Attribute": "Data", "Album": "4", "Power": 14.0, "Version": "MEmC", "Assumed_File": "kokuwa.gif", "Has_Image": true}, {"ID": "5-04", "Name": "Hagurumon", "Stage": "III", "Attribute": "Virus", "Album": "5", "Power": 18.0, "Version": "MEmC", "Assumed_File": "haguru.gif", "Has_Image": true}, {"ID": "5-05", "Name": "Greymon", "Stage": "IV", "Attribute": "Vaccine", "Album": "7", "Power": 48.0, "Version": "MEmC", "Assumed_File": "grey.gif", "Has_Image": true}, {"ID": "5-06", "Name": "Revolmon", "Stage": "IV", "Attribute": "Vaccine", "Album": "8", "Power": 32.0, "Version": "MEmC", "Assumed_File": "revol.gif", "Has_Image": true}, {"ID": "5-07", "Name": "Tankmon", "Stage": "IV", "Attribute": "Data", "Album": "9", "Power": 44.0, "Version": "MEmC", "Assumed_File": "tank.gif", "Has_Image": true}, {"ID": "5-08", "Name": "Clockmon", "Stage": "IV", "Attribute": "Data", "Album": "10", "Power": 36.0, "Version": "MEmC", "Assumed_File": "clock.gif", "Has_Image": true}, {"ID": "5-09", "Name": "Guardromon", "Stage": "IV", "Attribute": "Virus", "Album": "11", "Power": 50.0, "Version": "MEmC", "Assumed_File": "guardro.gif", "Has_Image": true}, {"ID": "5-10", "Name": "Mechanorimon", "Stage": "IV", "Attribute": "Virus", "Album": "12", "Power": 40.0, "Version": "MEmC", "Assumed_File": "mechanori.gif", "Has_Image": true}, {"ID": "5-11", "Name": "Thunderballmon", "Stage": "IV", "Attribute": "Data", "Album": "13", "Power": 55.0, "Version": "MEmC", "Assumed_File": "thunderball.gif", "Has_Image": true}, {"ID": "5-12", "Name": "Metal Greymon (Vaccine)", "Stage": "V", "Attribute": "Vaccine", "Album": "15", "Power": 100.0, "Version": "MEmC", "Assumed_File": "metalgrey.gif", "Has_Image": false}, {"ID": "5-13", "Name": "Andromon", "Stage": "V", "Attribute": "Vaccine", "Album": "16", "Power": 80.0, "Version": "MEmC", "Assumed_File": "andro.gif", "Has_Image": true}, {"ID": "5-14", "Name": "Knightmon", "Stage": "V", "Attribute": "Data", "Album": "17", "Power": 96.0, "Version": "MEmC", "Assumed_File": "knight.gif", "Has_Image": true}, {"ID": "5-15", "Name": "Big Mamemon", "Stage": "V", "Attribute": "Data", "Album": "18", "Power": 84.0, "Version": "MEmC", "Assumed_File": "bigmame.gif", "Has_Image": true}, {"ID": "5-16", "Name": "Megadramon", "Stage": "V", "Attribute": "Virus", "Album": "19", "Power": 105.0, "Version": "MEmC", "Assumed_File": "megadra.gif", "Has_Image": true}, {"ID": "5-17", "Name": "Waru Monzaemon", "Stage": "V", "Attribute": "Virus", "Album": "20", "Power": 88.0, "Version": "MEmC", "Assumed_File": "warumonzae.gif", "Has_Image": true}, {"ID": "5-18", "Name": "Cyberdramon", "Stage": "V", "Attribute": "Vaccine", "Album": "21", "Power": 92.0, "Version": "MEmC", "Assumed_File": "cyberdra.gif", "Has_Image": true}, {"ID": "5-19", "Name": "War Greymon", "Stage": "VI", "Attribute": "Vaccine", "Album": "23", "Power": 155.0, "Version": "MEmC", "Assumed_File": "wargrey.gif", "Has_Image": true}, {"ID": "5-20", "Name": "Metal Garurumon", "Stage": "VI", "Attribute": "Data", "Album": "24", "Power": 145.0, "Version": "MEmC", "Assumed_File": "metalgaruru.gif", "Has_Image": true}, {"ID": "5-21", "Name": "Mugendramon", "Stage": "VI", "Attribute": "Virus", "Album": "25", "Power": 170.0, "Version": "MEmC", "Assumed_File": "mugendra.gif", "Has_Image": true}, {"ID": "5-22", "Name": "Venom Vamdemon", "Stage": "VI", "Attribute": "Virus", "Album": "26", "Power": 150.0, "Version": "MEmC", "Assumed_File": "venomvamde.gif", "Has_Image": true}, {"ID": "5-23", "Name": "Hi Andromon", "Stage": "VI", "Attribute": "Vaccine", "Album": "27", "Power": 140.0, "Version": "MEmC", "Assumed_File": "hiandro.gif", "Has_Image": true}, {"ID": "5-24", "Name": "Ragnamon", "Stage": "VI", "Attribute": "Free", "Album": "28", "Power": 165.0, "Version": "MEmC", "Assumed_File": "ragna.gif", "Has_Image": true}, {"ID": "5-25", "Name": "Zeke Greymon", "Stage": "VI", "Attribute": "Virus", "Album": "29", "Power": 160.0, "Version": "MEmC", "Assumed_File": "zekegrey.gif", "Has_Image": true}, {"ID": "5-26", "Name": "Omegamon", "Stage": "VI+", "Attribute": "Vaccine", "Album": "31", "Power": 200.0, "Version": "MEmC", "Assumed_File": "omega.gif", "Has_Image": true}, {"ID": "5-27", "Name": "Chaosdramon", "Stage": "VI+", "Attribute": "Virus", "Album": "32", "Power": 205.0, "Version": "MEmC", "Assumed_File": "chaosdra.gif", "Has_Image": true}, {"ID": "5-28", "Name": "Commandramon", "Stage": "III", "Attribute": "Virus", "Album": "6", "Power": 25.0, "Version": "MEmC", "Assumed_File": "commandra.gif", "Has_Image": true}, {"ID": "5-29", "Name": "Hi-Commandramon", "Stage": "IV", "Attribute": "Virus", "Album": "14", "Power": 60.0, "Version": "MEmC", "Assumed_File": "hicommandra.gif", "Has_Image": true}, {"ID": "5-30", "Name": "Cargodramon", "Stage": "V", "Attribute": "Virus", "Album": "22", "Power": 110.0, "Version": "MEmC", "Assumed_File": "cargodra.gif", "Has_Image": true}, {"ID": "5-31", "Name": "Brigadramon", "Stage": "VI", "Attribute": "Virus", "Album": "30", "Power": 180.0, "Version": "MEmC", "Assumed_File": "brigadra.gif", "Has_Image": true}, {"ID": "0-00", "Name": "Yukimibotamon", "Stage": "I", "Attribute": "Free", "Album": "1", "Power": NaN, "Version": "VBuC", "Assumed_File": "yukimibota.gif", "Has_Image": true}, {"ID": "0-01", "Name": "Nyaromon", "Stage": "II", "Attribute": "Free", "Album": "2", "Power": NaN, "Version": "VBuC", "Assumed_File": "nyaro.gif", "Has_Image": true}, {"ID": "0-02", "Name": "Agumon", "Stage": "III", "Attribute": "Vaccine", "Album": "3", "Power": 20.0, "Version": "VBuC", "Assumed_File": "agu.gif", "Has_Image": true}, {"ID": "0-03", "Name": "Gabumon", "Stage": "III", "Attribute": "Data", "Album": "4", "Power": 14.0, "Version": "VBuC", "Assumed_File": "gabu.gif", "Has_Image": true}, {"ID": "0-04", "Name": "Plotmon", "Stage": "III", "Attribute": "Vaccine", "Album": "5", "Power": 10.0, "Version": "VBuC", "Assumed_File": "plot.gif", "Has_Image": true}, {"ID": "0-05", "Name": "Greymon", "Stage": "IV", "Attribute": "Vaccine", "Album": "7", "Power": 48.0, "Version": "VBuC", "Assumed_File": "grey.gif", "Has_Image": true}, {"ID": "0-06", "Name": "Leomon", "Stage": "IV", "Attribute": "Vaccine", "Album": "8", "Power": 40.0, "Version": "VBuC", "Assumed_File": "leo.gif", "Has_Image": true}, {"ID": "0-07", "Name": "Garurumon", "Stage": "IV", "Attribute": "Vaccine", "Album": "9", "Power": 44.0, "Version": "VBuC", "Assumed_File": "garuru.gif", "Has_Image": true}, {"ID": "0-08", "Name": "Igamon", "Stage": "IV", "Attribute": "Data", "Album": "10", "Power": 32.0, "Version": "VBuC", "Assumed_File": "iga.gif", "Has_Image": true}, {"ID": "0-09", "Name": "Angemon", "Stage": "IV", "Attribute": "Vaccine", "Album": "11", "Power": 50.0, "Version": "VBuC", "Assumed_File": "ange.gif", "Has_Image": true}, {"ID": "0-10", "Name": "Tailmon", "Stage": "IV", "Attribute": "Vaccine", "Album": "12", "Power": 55.0, "Version": "VBuC", "Assumed_File": "tail.gif", "Has_Image": true}, {"ID": "0-11", "Name": "Metal Greymon (Vaccine)", "Stage": "V", "Attribute": "Vaccine", "Album": "17", "Power": 100.0, "Version": "VBuC", "Assumed_File": "metalgrey.gif", "Has_Image": false}, {"ID": "0-12", "Name": "Asuramon", "Stage": "V", "Attribute": "Vaccine", "Album": "18", "Power": 80.0, "Version": "VBuC", "Assumed_File": "asura.gif", "Has_Image": true}, {"ID": "0-13", "Name": "Were Garurumon", "Stage": "V", "Attribute": "Vaccine", "Album": "19", "Power": 96.0, "Version": "VBuC", "Assumed_File": "weregaruru.gif", "Has_Image": true}, {"ID": "0-14", "Name": "Metal Mamemon", "Stage": "V", "Attribute": "Data", "Album": "20", "Power": 84.0, "Version": "VBuC", "Assumed_File": "metalmame.gif", "Has_Image": true}, {"ID": "0-15", "Name": "Holy Angemon", "Stage": "V", "Attribute": "Vaccine", "Album": "21", "Power": 110.0, "Version": "VBuC", "Assumed_File": "holyange.gif", "Has_Image": true}, {"ID": "0-16", "Name": "Angewomon", "Stage": "V", "Attribute": "Vaccine", "Album": "22", "Power": 105.0, "Version": "VBuC", "Assumed_File": "angewo.gif", "Has_Image": true}, {"ID": "0-17", "Name": "War Greymon", "Stage": "VI", "Attribute": "Vaccine", "Album": "25", "Power": 155.0, "Version": "VBuC", "Assumed_File": "wargrey.gif", "Has_Image": true}, {"ID": "0-18", "Name": "Metal Garurumon", "Stage": "VI", "Attribute": "Data", "Album": "26", "Power": 145.0, "Version": "VBuC", "Assumed_File": "metalgaruru.gif", "Has_Image": true}, {"ID": "0-19", "Name": "Dominimon", "Stage": "VI", "Attribute": "Vaccine", "Album": "27", "Power": 160.0, "Version": "VBuC", "Assumed_File": "domini.gif", "Has_Image": true}, {"ID": "0-20", "Name": "Quantumon", "Stage": "VI", "Attribute": "Data", "Album": "28", "Power": 165.0, "Version": "VBuC", "Assumed_File": "quantu.gif", "Has_Image": true}, {"ID": "0-21", "Name": "Omegamon", "Stage": "VI+", "Attribute": "Vaccine", "Album": "31", "Power": 200.0, "Version": "VBuC", "Assumed_File": "omega.gif", "Has_Image": true}, {"ID": "0-22", "Name": "Mastemon", "Stage": "VI+", "Attribute": "Vaccine", "Album": "32", "Power": 195.0, "Version": "VBuC", "Assumed_File": "maste.gif", "Has_Image": true}, {"ID": "0-23", "Name": "Gammamon", "Stage": "III", "Attribute": "Virus", "Album": "6", "Power": 25.0, "Version": "VBuC", "Assumed_File": "gamma.gif", "Has_Image": true}, {"ID": "0-24", "Name": "Betel Gammamon", "Stage": "IV", "Attribute": "Vaccine", "Album": "13", "Power": 60.0, "Version": "VBuC", "Assumed_File": "betelgamma.gif", "Has_Image": true}, {"ID": "0-25", "Name": "Kaus Gammamon", "Stage": "IV", "Attribute": "Data", "Album": "14", "Power": 57.0, "Version": "VBuC", "Assumed_File": "kausgamma.gif", "Has_Image": true}, {"ID": "0-26", "Name": "Wezen Gammamon", "Stage": "IV", "Attribute": "Data", "Album": "15", "Power": 65.0, "Version": "VBuC", "Assumed_File": "wezengamma.gif", "Has_Image": true}, {"ID": "0-27", "Name": "Gulus Gammamon", "Stage": "IV", "Attribute": "Virus", "Album": "16", "Power": 92.0, "Version": "VBuC", "Assumed_File": "gulusgamma.gif", "Has_Image": true}, {"ID": "0-28", "Name": "Canoweissmon", "Stage": "V", "Attribute": "Vaccine", "Album": "23", "Power": 120.0, "Version": "VBuC", "Assumed_File": "canoweiss.gif", "Has_Image": true}, {"ID": "0-29", "Name": "Regulusmon", "Stage": "V", "Attribute": "Virus", "Album": "24", "Power": 150.0, "Version": "VBuC", "Assumed_File": "regulus.gif", "Has_Image": true}, {"ID": "0-30", "Name": "Siriusmon", "Stage": "VI", "Attribute": "Vaccine", "Album": "29", "Power": 180.0, "Version": "VBuC", "Assumed_File": "sirius.gif", "Has_Image": true}, {"ID": "0-31", "Name": "Arcturusmon", "Stage": "VI", "Attribute": "Virus", "Album": "30", "Power": 175.0, "Version": "VBuC", "Assumed_File": "arcturus.gif", "Has_Image": true}, {"ID": "0-32", "Name": "Proximamon", "Stage": "VI+", "Attribute": "Virus", "Album": "33", "Power": 205.0, "Version": "VBuC", "Assumed_File": "proxima.gif", "Has_Image": true}, {"ID": "6-00", "Name": "Fukamon", "Stage": "I", "Attribute": "Free", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "fuka.gif", "Has_Image": true}, {"ID": "6-01", "Name": "Mokokomon", "Stage": "II", "Attribute": "Free", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "mokoko.gif", "Has_Image": true}, {"ID": "6-02", "Name": "Kakamon", "Stage": "III", "Attribute": "Vaccine", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "kaka.gif", "Has_Image": true}, {"ID": "6-03", "Name": "Kamemon", "Stage": "III", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "kame.gif", "Has_Image": true}, {"ID": "6-04", "Name": "Fujamon", "Stage": "III", "Attribute": "Virus", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "fuja.gif", "Has_Image": true}, {"ID": "6-05", "Name": "Takimon", "Stage": "III", "Attribute": "Unknown", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "taki.gif", "Has_Image": true}, {"ID": "6-06", "Name": "Hanumon", "Stage": "IV", "Attribute": "Vaccine", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "hanu.gif", "Has_Image": true}, {"ID": "6-07", "Name": "Xiquemon", "Stage": "IV", "Attribute": "Vaccine", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "xique.gif", "Has_Image": true}, {"ID": "6-08", "Name": "Gawappamon", "Stage": "IV", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "gawappa.gif", "Has_Image": true}, {"ID": "6-09", "Name": "Lianpumon", "Stage": "IV", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "lianpu.gif", "Has_Image": true}, {"ID": "6-10", "Name": "Ginkakumon", "Stage": "IV", "Attribute": "Virus", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "ginkaku.gif", "Has_Image": true}, {"ID": "6-11", "Name": "Kinkakumon", "Stage": "IV", "Attribute": "Virus", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "kinkaku.gif", "Has_Image": true}, {"ID": "6-12", "Name": "Hakubamon", "Stage": "IV", "Attribute": "Unknown", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "hakuba.gif", "Has_Image": true}, {"ID": "6-13", "Name": "Turuiemon", "Stage": "IV", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "turuie.gif", "Has_Image": true}, {"ID": "6-14", "Name": "Sanzomon", "Stage": "V", "Attribute": "Vaccine", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "sanzo.gif", "Has_Image": true}, {"ID": "6-15", "Name": "Huankunmon", "Stage": "V", "Attribute": "Vaccine", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "huankun.gif", "Has_Image": true}, {"ID": "6-16", "Name": "Cho-Hakkaimon", "Stage": "V", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "chohakkai.gif", "Has_Image": true}, {"ID": "6-17", "Name": "Pandamon", "Stage": "V", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "panda.gif", "Has_Image": true}, {"ID": "6-18", "Name": "Gokuwmon", "Stage": "V", "Attribute": "Virus", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "gokuw.gif", "Has_Image": true}, {"ID": "6-19", "Name": "Xingtianmon", "Stage": "V", "Attribute": "Virus", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "xingtian.gif", "Has_Image": true}, {"ID": "6-20", "Name": "Sagomon", "Stage": "V", "Attribute": "Virus", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "sago.gif", "Has_Image": true}, {"ID": "6-21", "Name": "Andiramon (Deva)", "Stage": "V", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "andira.gif", "Has_Image": false}, {"ID": "6-22", "Name": "Erlangmon", "Stage": "VI", "Attribute": "Vaccine", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "erlang.gif", "Has_Image": true}, {"ID": "6-23", "Name": "Xiangpengmon", "Stage": "VI", "Attribute": "Vaccine", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "xiangpeng.gif", "Has_Image": true}, {"ID": "6-24", "Name": "Shagaramon", "Stage": "VI", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "shagara.gif", "Has_Image": true}, {"ID": "6-25", "Name": "Nezhamon", "Stage": "VI", "Attribute": "Data", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "nezha.gif", "Has_Image": true}, {"ID": "6-26", "Name": "Seiten Gokuwmon", "Stage": "VI", "Attribute": "Virus", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "seitengokuw.gif", "Has_Image": true}, {"ID": "6-27", "Name": "Dijiangmon", "Stage": "VI", "Attribute": "Virus", "Album": "SWaC", "Power": NaN, "Version": NaN, "Assumed_File": "dijiang.gif", "Has_Image": true}];
+const IMG_BASE = "images/";
+const imgSet = new Set(["aegisdra.gif", "aerovdra.gif", "agu.gif", "amphi.gif", "andro.gif", "ange.gif", "angewo.gif", "angora.gif", "anomalocari.gif", "anubi.gif", "arcturus.gif", "asura.gif", "atlurkabuteri.gif", "bake.gif", "baku.gif", "betelgamma.gif", "bigmame.gif", "birdra.gif", "blast.gif", "blosso.gif", "bolt.gif", "brigadra.gif", "bubb.gif", "callis.gif", "cand.gif", "canoweiss.gif", "capri.gif", "cargodra.gif", "cernu.gif", "chaosdra.gif", "chohakkai.gif", "choro.gif", "clock.gif", "coela.gif", "commandra.gif", "cthylla.gif", "cyberdra.gif", "dago.gif", "de.gif", "deathmera.gif", "delu.gif", "devi.gif", "diarbbit.gif", "dijiang.gif", "dokugu.gif", "domini.gif", "ebidra.gif", "eldoradi.gif", "erlang.gif", "fanto.gif", "fenrilooga.gif", "flora.gif", "fuja.gif", "fuka.gif", "gabu.gif", "gale.gif", "gamma.gif", "gani.gif", "garuda.gif", "garuru.gif", "gawappa.gif", "geko.gif", "gerbe.gif", "geso.gif", "ginkaku.gif", "gokuw.gif", "goma.gif", "gottsu.gif", "grandgale.gif", "grankuwaga.gif", "grey.gif", "griffo.gif", "guardro.gif", "gulusgamma.gif", "haguru.gif", "hakuba.gif", "hangyo.gif", "hanu.gif", "heraklekabuteri.gif", "hiandro.gif", "hicommandra.gif", "holyange.gif", "holydra.gif", "houou.gif", "huankun.gif", "hydra.gif", "iga.gif", "ikkaku.gif", "jelly.gif", "jumbogame.gif", "jyaga.gif", "jyurei.gif", "kabuteri.gif", "kaka.gif", "kame.gif", "kausgamma.gif", "kinkaku.gif", "kiwi.gif", "knight.gif", "kokuwa.gif", "kuwaga.gif", "ladydevi.gif", "lamort.gif", "leo.gif", "lianpu.gif", "lili.gif", "looga.gif", "loogar.gif", "mam.gif", "marinange.gif", "marindevi.gif", "maste.gif", "mechanori.gif", "megadra.gif", "megaseadra.gif", "mera.gif", "metalete.gif", "metalgaruru.gif", "metalmame.gif", "metalseadra.gif", "mitama.gif", "mochi.gif", "mokoko.gif", "moku.gif", "monochro.gif", "mugendra.gif", "mush.gif", "nezha.gif", "noblepump.gif", "nyaro.gif", "nyoki.gif", "oct.gif", "okuwa.gif", "omega.gif", "otama.gif", "pal.gif", "panda.gif", "petimera.gif", "piccolo.gif", "picodevi.gif", "pie.gif", "pinochi.gif", "pitch.gif", "piyo.gif", "plesio.gif", "plot.gif", "proxima.gif", "ptero.gif", "puka.gif", "puku.gif", "pump.gif", "pyoco.gif", "quantu.gif", "rafflesi.gif", "ragna.gif", "redvegi.gif", "regulus.gif", "revol.gif", "rose.gif", "ruka.gif", "saberleo.gif", "sago.gif", "sanzo.gif", "seadra.gif", "seitengokuw.gif", "shagara.gif", "shako.gif", "sirius.gif", "skullmam.gif", "soloogar.gif", "star.gif", "symbareangora.gif", "tail.gif", "taki.gif", "tank.gif", "tento.gif", "teslajelly.gif", "thetis.gif", "thunderball.gif", "tlaloc.gif", "toge.gif", "tonosamageko.gif", "torta.gif", "toyagu.gif", "tricera.gif", "turuie.gif", "ulforcevdra.gif", "vamde.gif", "vdra.gif", "venomvamde.gif", "vike.gif", "voltobauta.gif", "wargrey.gif", "warumonzae.gif", "weregaruru.gif", "wezengamma.gif", "wha.gif", "wizar.gif", "wood.gif", "xiangpeng.gif", "xingtian.gif", "xique.gif", "yukimibota.gif", "zekegrey.gif", "zephaga.gif", "zudo.gif"]);
+
+// Helpers
+const safe = v => v ?? "";
+const normalizeStage = st => String(st || '').toUpperCase().replace(/\s+/g,'').replace(/\+$/,'').trim();
+const stageRankMap = {'I':1,'II':2,'III':3,'IV':4,'V':5,'VI':6,'VII':7};
+const rankOf = st => stageRankMap[ normalizeStage(st) ] ?? 999;
+const getLine = id => { const m = String(id||'').match(/^(\d+)-/); return m ? m[1] : null; };
+const toNum = v => v === null || v === undefined || v === "" ? null : Number(v);
+const by = (k, dir=1, primer=x=>x) => (a,b)=> (primer(a[k])>primer(b[k])?dir:-dir);
+
+const imgTag = r => imgSet.has(String(r.Assumed_File||'').toLowerCase())
+  ? `<img src="${IMG_BASE}${String(r.Assumed_File).toLowerCase()}" alt="${r.Name}">`
+  : `<div class="placeholder">${String(r.Name||'?').slice(0,3).toUpperCase()}</div>`;
+
+// Library
+const stageSel = document.getElementById('stage');
+const attrSel = document.getElementById('attr');
+const versionSel = document.getElementById('version');
+const q = document.getElementById('q');
+const sortSel = document.getElementById('sort');
+const grid = document.getElementById('grid');
+const meta = document.getElementById('meta');
+const matchCount = document.getElementById('matchCount');
+const showMissingBtn = document.getElementById('showMissing');
+const resetBtn = document.getElementById('reset');
+
+const unique = (arr, key) => [...new Set(arr.map(x => safe(x[key]).toString().trim()).filter(Boolean))].sort();
+const addOpts = (sel, vals) => vals.forEach(v => sel.insertAdjacentHTML('beforeend', `<option value="${v}">${v}</option>`));
+addOpts(stageSel, unique(DATA, 'Stage')); addOpts(attrSel, unique(DATA, 'Attribute')); addOpts(versionSel, unique(DATA, 'Version'));
+
+let showOnlyMissing = false;
+function renderLib(){
+  let rows = [...DATA];
+  const qv = q.value.trim().toLowerCase();
+  if (qv) rows = rows.filter(r => safe(r.Name).toLowerCase().includes(qv) || safe(r.ID).toLowerCase().includes(qv));
+  if (stageSel.value) rows = rows.filter(r => safe(r.Stage) === stageSel.value);
+  if (attrSel.value) rows = rows.filter(r => safe(r.Attribute) === attrSel.value);
+  if (versionSel.value) rows = rows.filter(r => safe(r.Version) === versionSel.value);
+  if (showOnlyMissing) rows = rows.filter(r => !imgSet.has(String(r.Assumed_File||'').toLowerCase()));
+
+  const choice = sortSel.value;
+  if (choice === 'name') rows.sort(by('Name', 1, x => safe(x).toString().toLowerCase()));
+  if (choice === 'power_desc') rows.sort((a,b) => (toNum(b.Power) ?? -Infinity) - (toNum(a.Power) ?? -Infinity));
+  if (choice === 'power_asc') rows.sort((a,b) => (toNum(a.Power) ?? Infinity) - (toNum(b.Power) ?? Infinity));
+  if (choice === 'album_asc') rows.sort((a,b) => (toNum(a.Album) ?? Infinity) - (toNum(b.Album) ?? Infinity));
+  if (choice === 'id') rows.sort(by('ID', 1));
+
+  grid.innerHTML = rows.map(r => `
+    <article class="card" tabindex="0" aria-label="${r.Name}">
+      <div class="thumb">${imgTag(r)}</div>
+      <div class="content">
+        <div class="name">${r.Name}</div>
+        <div>
+          <span class="pill">Stage: ${safe(r.Stage)}</span>
+          <span class="pill">Attr: ${safe(r.Attribute)}</span>
+          <span class="pill">Ver: ${safe(r.Version)}</span>
+        </div>
+        <div class="kv">
+          <div>ID</div><div>${safe(r.ID)}</div>
+          <div>Album</div><div>${safe(r.Album)}</div>
+          <div>Power</div><div>${safe(r.Power)}</div>
+          <div>File</div><div>${safe(r.Assumed_File)}</div>
+        </div>
+      </div>
+    </article>`).join('');
+
+  matchCount.textContent = `${rows.length} match${rows.length===1?'':'es'}`;
+  meta.textContent = `From CSV: ${DATA.length} • Images present: ${imgSet.size}`;
+}
+showMissingBtn.addEventListener('click', () => { showOnlyMissing = !showOnlyMissing; showMissingBtn.textContent = showOnlyMissing ? 'Show all' : 'Show missing images'; renderLib(); });
+resetBtn.addEventListener('click', () => { q.value=''; stageSel.value=''; attrSel.value=''; versionSel.value=''; sortSel.value='name'; showOnlyMissing=false; showMissingBtn.textContent='Show missing images'; renderLib(); });
+renderLib();
+
+// Evolution prep
+const byLine = new Map();
+for (const r of DATA) { const line = getLine(r.ID); if (!line) continue; if (!byLine.has(line)) byLine.set(line, []); byLine.get(line).push(r); }
+for (const [line, arr] of byLine) { arr.sort((a,b)=> (rankOf(a.Stage)-rankOf(b.Stage)) || String(a.Name).localeCompare(String(b.Name))); }
+
+// Special EXP
+const EXP_TYPES = ['A','B','C','D','E','F','G'];
+function genReq(candidateID, stageRank) {
+  let s = String(candidateID), h=0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
+  function rand(){ h = (h*1664525 + 1013904223) >>> 0; return h/2**32; }
+  const numClauses = 1 + Math.floor(rand()*2);
+  const clauses = [];
+  for (let c=0;c<numClauses;c++) {
+    const need = {};
+    const k = 2 + Math.floor(rand()*2);
+    const picks = new Set();
+    while (picks.size<k) picks.add(EXP_TYPES[Math.floor(rand()*EXP_TYPES.length)]);
+    picks.forEach(t => { const base = 15 + Math.floor(rand()*20); const scale = (stageRank-1)*5; need[t] = base + scale; });
+    clauses.push(need);
+  }
+  return clauses;
+}
+const REQS = new Map();
+for (const r of DATA) REQS.set(String(r.ID), genReq(r.ID, rankOf(r.Stage)));
+
+// Special EXP UI
+const exp7 = document.getElementById('exp7');
+const expState = { A:0, B:0, C:0, D:0, E:0, F:0, G:0 };
+function renderExpBoxes(){
+  exp7.innerHTML = EXP_TYPES.map(t => `
+    <div class="expbox">
+      <div class="muted">EXP ${t}</div>
+      <div class="val" id="val_${t}">${expState[t]}</div>
+      <div class="btns">
+        <button data-exp="${t}" data-add="1">+1</button>
+        <button data-exp="${t}" data-add="5">+5</button>
+        <button data-exp="${t}" data-add="10">+10</button>
+      </div>
+    </div>`).join('');
+  exp7.querySelectorAll('button').forEach(b => b.addEventListener('click', e => {
+    const t = e.currentTarget.getAttribute('data-exp'); const add = Number(e.currentTarget.getAttribute('data-add'));
+    expState[t] = (expState[t]||0) + add; document.getElementById('val_'+t).textContent = expState[t]; renderCurrent();
+  }));
+}
+renderExpBoxes();
+
+const resetSpec = document.getElementById('resetSpec');
+const randSpec = document.getElementById('randSpec');
+const toggleReveal = document.getElementById('toggleReveal');
+const reqDump = document.getElementById('reqDump');
+let reveal = false;
+resetSpec.addEventListener('click', ()=>{ EXP_TYPES.forEach(t=>expState[t]=0); renderExpBoxes(); statusMsg('Special EXP reset.', false); });
+randSpec.addEventListener('click', ()=>{ EXP_TYPES.forEach(t=>expState[t]+=10); renderExpBoxes(); statusMsg('Granted +10 to A–G.', false); });
+toggleReveal.addEventListener('click', ()=>{ reveal = !reveal; toggleReveal.textContent = reveal ? '🙈 Hide requirements' : '👁 Reveal requirements (debug)'; renderCurrent(); });
+
+const clauseMet = clause => Object.entries(clause).every(([t,need]) => (expState[t]||0) >= Number(need));
+const candidateSatisfied = target => (REQS.get(String(target.ID)) || []).some(clauseMet);
+
+function dumpReqsFor(pool){
+  if (!reveal) { reqDump.classList.remove('show'); reqDump.textContent=''; return; }
+  const lines = pool.map(p => {
+    const clauses = REQS.get(String(p.ID)) || [];
+    const s = clauses.map((c,i)=> 'Option '+(i+1)+': '+Object.entries(c).map(([t,v])=> t+'>='+v).join(', ')).join('  |  ');
+    return `• ${p.Name} (${normalizeStage(p.Stage)}) — ${s}`;
+  });
+  reqDump.textContent = lines.join('\n') || '(no candidates)';
+  reqDump.classList.add('show');
+}
+
+// Simulator
+const lineSel = document.getElementById('lineSel'), startStage = document.getElementById('startStage'), startDigi = document.getElementById('startDigi');
+const startBtn = document.getElementById('startBtn'), pickFromLib = document.getElementById('pickFromLib');
+const t12 = document.getElementById('t12'), t23 = document.getElementById('t23'), t34 = document.getElementById('t34');
+const xpbar = document.getElementById('xpbar'), xptext = document.getElementById('xptext');
+const currentBox = document.getElementById('currentBox'), historyBox = document.getElementById('history'), simStatus = document.getElementById('simStatus');
+
+const lines = [...byLine.keys()].sort((a,b)=>Number(a)-Number(b));
+lineSel.innerHTML = lines.map(l=>`<option value="${l}">${l}</option>`).join(''); if (lines.length) lineSel.value = lines[0];
+
+const candidates = (line, stRank) => (byLine.get(line) ?? []).filter(r => rankOf(r.Stage) === stRank);
+const nearestHigher = (line, currentRank) => { for (let target=currentRank+1; target<=7; target++) { const pool=candidates(line, target); if (pool.length) return pool; } return []; };
+const randPick = arr => arr.length ? arr[Math.floor(Math.random()*arr.length)] : null;
+
+function refreshStartOptions(){
+  const line = lineSel.value; const rank = rankOf(startStage.value);
+  const opts = candidates(line, rank);
+  startDigi.innerHTML = opts.map(r=>`<option value="${r.ID}">${r.Name} (${r.ID})</option>`).join('');
+  if (opts.length) startDigi.value = String(opts[0].ID);
+  statusMsg(`Line ${line} • ${opts.length} candidate(s) at stage ${startStage.value}`, false);
+  dumpReqsFor(opts);
+}
+lineSel.addEventListener('change', refreshStartOptions);
+startStage.addEventListener('change', refreshStartOptions);
+
+let state = { current: null, xp: 0, hist: [] };
+const findById = id => DATA.find(x => String(x.ID) === String(id));
+
+const currentThreshold = () => { const r = rankOf(state.current?.Stage); if (r<=1) return Number(t12.value||100); if (r===2) return Number(t23.value||250); return Number(t34.value||500); };
+const statusMsg = (txt, isErr) => { simStatus.textContent = txt; simStatus.className = 'status' + (isErr ? ' err' : ''); };
+
+function renderCurrent(){
+  if (!state.current) return;
+  const r = state.current;
+  currentBox.innerHTML = `
+    <div class="thumb">${imgTag(r)}</div>
+    <div>
+      <div class="name" style="font-size:20px;">${r.Name}</div>
+      <div class="pill">ID: ${r.ID}</div>
+      <div class="pill">Stage: ${normalizeStage(r.Stage)}</div>
+      <div class="pill">Line: ${getLine(r.ID)}</div>
+    </div>`;
+  const need = currentThreshold();
+  const pct = Math.max(0, Math.min(100, Math.round(100*state.xp/need)));
+  xpbar.style.width = pct + '%'; xptext.textContent = `${state.xp} / ${need}`;
+  const line = getLine(r.ID); const nextPool = (rankOf(r.Stage) < 3) ? candidates(line, rankOf(r.Stage)+1) : nearestHigher(line, rankOf(r.Stage));
+  dumpReqsFor(nextPool);
+  historyBox.innerHTML = state.hist.map(h => `<span class="chip">${h.Name} (${normalizeStage(h.Stage)})</span>`).join('');
+}
+
+function eligibleNextPool(r){
+  const line = getLine(r.ID);
+  const rank = rankOf(r.Stage);
+  let pool = [];
+  if (rank === 1) pool = candidates(line, 2);
+  else if (rank === 2) pool = candidates(line, 3);
+  else pool = nearestHigher(line, rank);
+  return pool.filter(candidateSatisfied);
+}
+
+function evolveIfReady(){
+  const r = state.current; if (!r) return;
+  const need = currentThreshold();
+  if (state.xp < need) { statusMsg('Not enough Base EXP yet. Keep training!', true); return; }
+  const pool = eligibleNextPool(r);
+  if (!pool.length) { statusMsg('Base EXP ready, but Special EXP combo not met. Adjust A–G.', true); return; }
+  const next = randPick(pool);
+  state.hist.push(r); state.xp = 0; state.current = next;
+  statusMsg(`Evolved into ${next.Name} (${normalizeStage(next.Stage)})!`, false); renderCurrent();
+}
+
+function startSim(fromSelect=true){
+  const r = fromSelect ? findById(startDigi.value) : state.current;
+  if (!r) { statusMsg('Choose a valid starter for this line/stage.', true); return; }
+  state = { current: r, xp: 0, hist: [] };
+  EXP_TYPES.forEach(t=>expState[t]=0); renderExpBoxes();
+  statusMsg(`Started with ${r.Name} (${normalizeStage(r.Stage)}) on line ${getLine(r.ID)}.`, false); renderCurrent();
+}
+
+// Base XP buttons
+document.getElementById('xp10').addEventListener('click', ()=>{ state.xp += 10; renderCurrent(); evolveIfReady(); });
+document.getElementById('xp50').addEventListener('click', ()=>{ state.xp += 50; renderCurrent(); evolveIfReady(); });
+document.getElementById('xp100').addEventListener('click', ()=>{ state.xp += 100; renderCurrent(); evolveIfReady(); });
+document.getElementById('resetXp').addEventListener('click', ()=>{ state.xp = 0; renderCurrent(); statusMsg('XP reset.', false); });
+document.getElementById('restart').addEventListener('click', ()=> startSim(true));
+document.getElementById('randomize').addEventListener('click', ()=>{
+  const linesArr = [...byLine.keys()];
+  lineSel.value = linesArr[Math.floor(Math.random()*linesArr.length)];
+  const rank = rankOf(startStage.value);
+  const opts = (byLine.get(lineSel.value)||[]).filter(r => rankOf(r.Stage)===rank);
+  if (opts.length) { startDigi.innerHTML = opts.map(r=>`<option value="${r.ID}">${r.Name} (${r.ID})</option>`).join(''); startDigi.value = String((opts[Math.floor(Math.random()*opts.length)]).ID); startSim(true); }
+});
+document.getElementById('startBtn').addEventListener('click', ()=> startSim(true));
+document.getElementById('startDigi').addEventListener('change', ()=> startSim(true));
+document.getElementById('pickFromLib').addEventListener('click', ()=>{
+  const idCell = document.querySelector('#grid .card .kv div:nth-child(2)');
+  if (!idCell) { statusMsg('No visible item in Library to pick.', true); return; }
+  const id = idCell.textContent.trim(); const dig = DATA.find(d => String(d.ID) === id);
+  if (!dig) { statusMsg('Could not map Library selection to data.', true); return; }
+  const line = getLine(dig.ID); lineSel.value = line; const rnk = Math.min(rankOf(dig.Stage), 4); startStage.value = ['','I','II','III','IV'][rnk];
+  const opts = (byLine.get(line)||[]).filter(r => rankOf(r.Stage)===rnk);
+  startDigi.innerHTML = opts.map(r=>`<option value="${r.ID}">${r.Name} (${r.ID})</option>`).join('');
+  startDigi.value = String(dig.ID); startSim(true);
+});
+
+// Init
+function initSelectors(){
+  const linesArr = [...byLine.keys()].sort((a,b)=>Number(a)-Number(b));
+  lineSel.innerHTML = linesArr.map(l=>`<option value="${l}">${l}</option>`).join('');
+  if (linesArr.length) lineSel.value = linesArr[0];
+  startStage.value = 'I';
+  const opts = (byLine.get(lineSel.value)||[]).filter(r => normalizeStage(r.Stage)==='I');
+  startDigi.innerHTML = opts.map(r=>`<option value="${r.ID}">${r.Name} (${r.ID})</option>`).join('');
+  if (opts.length) startDigi.value = String(opts[0].ID);
+}
+initSelectors(); startSim(true);
+</script>
+</body>
+</html>
